@@ -2,28 +2,41 @@
 
 from __future__ import annotations
 
+import threading
 from dataclasses import replace
 from typing import Callable
 
+from PySide6.QtCore import QObject, QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
+    QProgressBar,
     QPushButton,
+    QRadioButton,
+    QScrollArea,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from . import hotkey, models
+from . import download, hotkey, models
 from .config import Config
+
+
+class _DownloadSignals(QObject):
+    progress = Signal(str, float)      # (model_id, fraction)
+    finished = Signal(str, bool, str)  # (model_id, ok, error)
 
 _LANGUAGES = [
     ("Auto-detect", "auto"), ("English", "en"), ("Spanish", "es"), ("French", "fr"),
@@ -73,38 +86,154 @@ class SettingsWindow(QWidget):
     # -- tabs -----------------------------------------------------------------
 
     def _model_tab(self) -> QWidget:
+        self._dl_signals = _DownloadSignals()
+        self._dl_signals.progress.connect(self._on_download_progress)
+        self._dl_signals.finished.connect(self._on_download_finished)
+        self._model_rows: dict[str, dict] = {}
+        self._selected_model_id = self.cfg.model
+        self._model_group = QButtonGroup(self)
+        self._model_group.setExclusive(True)
+
         w = QWidget()
-        form = QFormLayout(w)
+        outer = QVBoxLayout(w)
 
-        self.model_combo = QComboBox()
-        for m in models.MODELS:
-            mark = "✓ " if models.is_downloaded(m.id) else "⬇ "
-            self.model_combo.addItem(f"{mark}{m.label} ({m.size_mb} MB) — {m.note}", m.id)
-        self._select_combo(self.model_combo, self.cfg.model)
-        form.addRow("Model", self.model_combo)
+        # Scrollable list of models, grouped like the original app.
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        inner = QWidget()
+        vbox = QVBoxLayout(inner)
+        vbox.setSpacing(4)
+        for group, items in models.models_by_group().items():
+            header = QLabel(group)
+            header.setStyleSheet("font-weight: bold; margin-top: 6px;")
+            vbox.addWidget(header)
+            for m in items:
+                vbox.addWidget(self._model_row(m))
+        vbox.addStretch(1)
+        scroll.setWidget(inner)
+        outer.addWidget(scroll, 1)
 
-        self.device_combo = QComboBox()
-        self.device_combo.addItems(_DEVICES)
-        self.device_combo.setCurrentText(self.cfg.device)
-        form.addRow("Device", self.device_combo)
-
-        self.compute_combo = QComboBox()
-        self.compute_combo.addItems(_COMPUTE_TYPES)
-        self.compute_combo.setCurrentText(self.cfg.compute_type)
-        form.addRow("Compute type", self.compute_combo)
-
+        # Language selector (below the model list).
+        lang_row = QHBoxLayout()
+        lang_row.addWidget(QLabel("Language"))
         self.lang_combo = QComboBox()
         for label, code in _LANGUAGES:
             self.lang_combo.addItem(label, code)
         self._select_combo(self.lang_combo, self.cfg.language)
-        form.addRow("Language", self.lang_combo)
+        lang_row.addWidget(self.lang_combo, 1)
+        outer.addLayout(lang_row)
 
-        note = QLabel("Models download automatically on first use and are cached "
-                      "under ~/.cache/huggingface.")
+        note = QLabel("Models are cached under ~/.cache/huggingface. Selecting a model "
+                      "downloads it if needed; an undownloaded model also downloads on "
+                      "first use.")
         note.setWordWrap(True)
         note.setStyleSheet("color: gray; font-size: 11px;")
-        form.addRow(note)
+        outer.addWidget(note)
         return w
+
+    def _model_row(self, m: models.ModelInfo) -> QWidget:
+        row = QFrame()
+        row.setFrameShape(QFrame.Shape.StyledPanel)
+        lay = QVBoxLayout(row)
+        lay.setContentsMargins(8, 6, 8, 6)
+
+        top = QHBoxLayout()
+        radio = QRadioButton(f"{m.label}  ·  {m.size_str}")
+        radio.setChecked(m.id == self._selected_model_id)
+        radio.toggled.connect(lambda on, mid=m.id: self._on_model_selected(mid) if on else None)
+        self._model_group.addButton(radio)
+        top.addWidget(radio, 1)
+
+        hf = QPushButton("HF ↗")
+        hf.setFlat(True)
+        hf.setToolTip(m.hf_page_url)
+        hf.clicked.connect(lambda _=False, url=m.hf_page_url: QDesktopServices.openUrl(QUrl(url)))
+        top.addWidget(hf)
+
+        dl_btn = QPushButton()
+        dl_btn.clicked.connect(lambda _=False, mid=m.id: self._start_download(mid))
+        top.addWidget(dl_btn)
+        lay.addLayout(top)
+
+        note = QLabel(m.note)
+        note.setWordWrap(True)
+        note.setStyleSheet("color: gray; font-size: 11px;")
+        lay.addWidget(note)
+
+        bar = QProgressBar()
+        bar.setRange(0, 100)
+        bar.setVisible(False)
+        bar.setTextVisible(True)
+        lay.addWidget(bar)
+
+        self._model_rows[m.id] = {"radio": radio, "button": dl_btn, "bar": bar}
+        self._refresh_download_button(m.id)
+        return row
+
+    def _refresh_download_button(self, model_id: str) -> None:
+        row = self._model_rows.get(model_id)
+        if not row:
+            return
+        if models.is_downloaded(model_id):
+            row["button"].setText("✓ Downloaded")
+            row["button"].setEnabled(False)
+        else:
+            row["button"].setText("⬇ Download")
+            row["button"].setEnabled(True)
+
+    def _on_model_selected(self, model_id: str) -> None:
+        # Compute the transition from the previously selected model so a preset the
+        # old model forced (e.g. Hebrew's language) is reset if the new one doesn't.
+        changes = models.selection_changes(self._selected_model_id, model_id)
+        self._selected_model_id = model_id
+        if "compute_type" in changes:
+            self.compute_combo.setCurrentText(changes["compute_type"])
+        if "language" in changes:
+            self._select_combo(self.lang_combo, changes["language"])
+
+    def _start_download(self, model_id: str) -> None:
+        row = self._model_rows.get(model_id)
+        if not row:
+            return
+        row["button"].setEnabled(False)
+        row["button"].setText("Downloading…")
+        row["bar"].setVisible(True)
+        row["bar"].setValue(0)
+
+        def worker():
+            try:
+                download.download_model(
+                    model_id,
+                    lambda frac: self._dl_signals.progress.emit(model_id, frac),
+                )
+                self._dl_signals.finished.emit(model_id, True, "")
+            except Exception as e:  # noqa: BLE001
+                self._dl_signals.finished.emit(model_id, False, str(e))
+
+        threading.Thread(target=worker, name=f"dl-{model_id}", daemon=True).start()
+        self.set_status(f"Downloading {model_id}…")
+
+    def _on_download_progress(self, model_id: str, frac: float) -> None:
+        row = self._model_rows.get(model_id)
+        if row:
+            row["bar"].setValue(int(frac * 100))
+
+    def _on_download_finished(self, model_id: str, ok: bool, error: str) -> None:
+        row = self._model_rows.get(model_id)
+        if row:
+            row["bar"].setVisible(False)
+        if ok:
+            self._refresh_download_button(model_id)
+            # Turbo tiers share a download — refresh their buttons too.
+            for other in models.MODELS:
+                if other.repo == models.repo_id(model_id):
+                    self._refresh_download_button(other.id)
+            self.set_status(f"Downloaded {model_id}")
+        else:
+            if row:
+                row["button"].setEnabled(True)
+                row["button"].setText("⬇ Download")
+            self.set_status(f"Download failed: {error}")
 
     def _audio_output_tab(self) -> QWidget:
         w = QWidget()
@@ -175,6 +304,16 @@ class SettingsWindow(QWidget):
         w = QWidget()
         form = QFormLayout(w)
 
+        self.device_combo = QComboBox()
+        self.device_combo.addItems(_DEVICES)
+        self.device_combo.setCurrentText(self.cfg.device)
+        form.addRow("Device", self.device_combo)
+
+        self.compute_combo = QComboBox()
+        self.compute_combo.addItems(_COMPUTE_TYPES)
+        self.compute_combo.setCurrentText(self.cfg.compute_type)
+        form.addRow("Compute type", self.compute_combo)
+
         self.beam_spin = QSpinBox()
         self.beam_spin.setRange(1, 10)
         self.beam_spin.setValue(self.cfg.beam_size)
@@ -226,7 +365,7 @@ class SettingsWindow(QWidget):
     def _collect(self) -> Config:
         return replace(
             self.cfg,
-            model=self.model_combo.currentData(),
+            model=self._selected_model_id,
             device=self.device_combo.currentText(),
             compute_type=self.compute_combo.currentText(),
             language=self.lang_combo.currentData(),

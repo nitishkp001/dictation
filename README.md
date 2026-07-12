@@ -99,19 +99,22 @@ Command reference:
 
 ## Models
 
-Models are pulled from the Hugging Face Hub on first use and cached under
-`~/.cache/huggingface`. Pick one in **Settings → Model** or the tray **Model** menu:
+The catalog mirrors the original OpenSuperWhisper line-up, running on
+[faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2). Pick one
+in **Settings → Model** (grouped, with a download button + progress bar and a link
+to each model's Hugging Face page) or from the tray **Model** menu. Models are
+cached under `~/.cache/huggingface`.
 
-| Model | Size | Notes |
+| Group | Models | Notes |
 |---|---|---|
-| Tiny / Base | 75 / 145 MB | Fast, great for quick notes |
-| Small / Medium | 484 / 1530 MB | Better accuracy |
-| Distil Large v3 | ~1.5 GB | Near large-v3, ~2× faster (English) |
-| Large v3 Turbo | ~1.6 GB | **Recommended** — large-v3 quality, fast |
-| Large v3 | ~3 GB | Best accuracy |
+| **Turbo V3** | large / medium / small | Same `large-v3-turbo` download, quantized at load (float16 → int8). **Recommended.** |
+| **Standard** | Tiny, Tiny (EN), Base, Small, Medium, Large v3 | Classic Whisper sizes, 75 MB → 3 GB |
+| **Distil** | Distil Large v3 | Near large-v3 quality, ~2× faster (English) |
+| **Fine-tuned** | Turbo V3 Hebrew | ivrit.ai Hebrew fine-tune; auto-sets language to Hebrew |
 
-`int8` compute (default) runs comfortably on CPU. If you have an NVIDIA GPU, set
-**Device → cuda** and **Compute → float16** in Settings.
+Selecting a Turbo tier just changes the `compute_type` (quantization); the three
+share one download. `int8` runs comfortably on CPU — with an NVIDIA GPU set
+**Device → cuda** in Settings for `float16`.
 
 ## Auto-paste / auto-type on Wayland
 

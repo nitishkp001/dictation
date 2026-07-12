@@ -35,17 +35,21 @@ class Transcriber:
                 progress(f"Loading model “{cfg.model}”…")
             from faster_whisper import WhisperModel
 
-            from .models import _repo_id
+            from .models import repo_id
 
             device = cfg.device
             compute_type = cfg.compute_type
             if device == "auto":
                 device, compute_type = _auto_device(compute_type)
+            # A model preset may request a GPU-only compute (e.g. Turbo V3 large ->
+            # float16); sanitize so an incompatible device/compute pair can never
+            # reach CTranslate2 and crash.
+            compute_type = _sanitize_compute(device, compute_type)
             # Resolve through the same repo mapping is_downloaded() uses, so custom
             # aliases (large-v3-turbo, distil-large-v3) load the exact repo we report
             # as cached instead of faster-whisper's own — possibly different — default.
             self._model = WhisperModel(
-                _repo_id(cfg.model), device=device, compute_type=compute_type
+                repo_id(cfg.model), device=device, compute_type=compute_type
             )
             self._loaded_key = key
             return self._model
@@ -93,3 +97,20 @@ def _auto_device(preferred_compute: str) -> tuple[str, str]:
         pass
     ct = preferred_compute if preferred_compute in ("int8", "float32") else "int8"
     return "cpu", ct
+
+
+# Compute types CTranslate2 actually supports per device.
+_CPU_COMPUTES = {"int8", "int16", "float32"}
+_GPU_COMPUTES = {"int8", "int8_float16", "float16", "float32"}
+
+
+def _sanitize_compute(device: str, compute_type: str) -> str:
+    """Coerce a compute_type to one valid for ``device`` (never crash on a bad pair)."""
+    if device == "cpu":
+        if compute_type in _CPU_COMPUTES:
+            return compute_type
+        return "float32" if compute_type in ("float16", "float32") else "int8"
+    # cuda / any GPU
+    if compute_type in _GPU_COMPUTES:
+        return compute_type
+    return "float16"
