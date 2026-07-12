@@ -15,7 +15,7 @@ CONFIG_DIR = Path(user_config_dir(APP_ID))
 CONFIG_PATH = CONFIG_DIR / "config.json"
 STATE_DIR = Path(user_state_dir(APP_ID))
 RUNTIME_DIR = Path(user_runtime_dir(APP_ID))
-SOCKET_PATH = RUNTIME_DIR / "dictation.sock"
+SOCKET_PATH = RUNTIME_DIR / "dictux.sock"
 
 
 @dataclass

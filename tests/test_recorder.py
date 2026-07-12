@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from dictation import recorder
-from dictation.recorder import RecorderError, _build_command
+from dictux import recorder
+from dictux.recorder import RecorderError, _build_command
 
 
 def test_pw_record_command(monkeypatch):

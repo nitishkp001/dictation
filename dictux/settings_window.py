@@ -42,7 +42,7 @@ class SettingsWindow(QWidget):
         super().__init__()
         self.cfg = cfg
         self._on_apply = on_apply
-        self.setWindowTitle("Dictation — Settings")
+        self.setWindowTitle("Dictux — Settings")
         self.setMinimumWidth(460)
 
         tabs = QTabWidget(self)
@@ -155,7 +155,7 @@ class SettingsWindow(QWidget):
 
         if not hotkey.gnome_available():
             warn = QLabel("gsettings not found — on non-GNOME desktops bind "
-                          "`dictation --toggle` to a key in your DE's keyboard settings.")
+                          "`dictux --toggle` to a key in your DE's keyboard settings.")
             warn.setWordWrap(True)
             warn.setStyleSheet("color: #b26a00;")
             form.addRow(warn)
@@ -164,7 +164,7 @@ class SettingsWindow(QWidget):
         self.evdev_edit.setPlaceholderText("optional, e.g. KEY_LEFTCTRL+KEY_SPACE")
         form.addRow("evdev combo (optional)", self.evdev_edit)
 
-        note = QLabel("The shortcut runs `dictation --toggle`, which starts/stops "
+        note = QLabel("The shortcut runs `dictux --toggle`, which starts/stops "
                       "recording in this running app.")
         note.setWordWrap(True)
         note.setStyleSheet("color: gray; font-size: 11px;")

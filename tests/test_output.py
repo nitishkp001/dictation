@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dictation import output
-from dictation.config import Config
+from dictux import output
+from dictux.config import Config
 
 
 def test_is_wayland_detection(monkeypatch):
@@ -25,6 +25,22 @@ def test_deliver_falls_back_when_no_tools(monkeypatch):
     cfg = Config(copy_to_clipboard=True, auto_paste=False, auto_type=False)
     status = output.deliver("hello", cfg)
     assert status == "no output method available"
+
+
+def test_deliver_does_not_paste_when_copy_fails(monkeypatch):
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.setattr(output, "copy_to_clipboard", lambda text: False)
+    pasted = {"called": False}
+
+    def fake_paste():
+        pasted["called"] = True
+        return True
+
+    monkeypatch.setattr(output, "_paste_shortcut", fake_paste)
+    cfg = Config(copy_to_clipboard=False, auto_paste=True, auto_type=False)
+    status = output.deliver("hello", cfg)
+    assert pasted["called"] is False  # must not paste stale clipboard content
+    assert "not pasted" in status
 
 
 def test_deliver_copies_when_wl_copy_present(monkeypatch):

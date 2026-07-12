@@ -64,7 +64,7 @@ jobs:
           \`\`\`
           pipx install git+https://github.com/${{ github.repository }}.git@${tag}
           \`\`\`
-          Or download the wheel below and \`pipx install ./dictation-*.whl\`."
+          Or download the wheel below and \`pipx install ./dictux-*.whl\`."
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" dist/* --clobber
           else

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from dictation import config
-from dictation.config import Config
+from dictux import config
+from dictux.config import Config
 
 
 def test_defaults_are_sane():

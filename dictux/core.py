@@ -126,7 +126,7 @@ class Engine:
             if len(preview) > 80:
                 preview = preview[:77] + "…"
             notifications.notify(f"{preview}\n({status}, {elapsed:.1f}s)",
-                                 title="Dictation ✓", icon="emblem-ok")
+                                 title="Dictux ✓", icon="emblem-ok")
         self._set_state(State.IDLE)
 
     # -- config / model -------------------------------------------------------

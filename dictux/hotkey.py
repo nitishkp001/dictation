@@ -3,7 +3,7 @@
 Two mechanisms:
 
 1. GNOME custom keybinding (default). We register a shortcut via ``gsettings``
-   that runs ``dictation --toggle``. Portable, no special permissions, works on
+   that runs ``dictux --toggle``. Portable, no special permissions, works on
    Wayland. See :func:`install_gnome_hotkey`.
 
 2. Optional evdev listener (for non-GNOME desktops). Reads key events directly
@@ -20,7 +20,11 @@ from typing import Callable
 # --- GNOME gsettings custom keybinding ---------------------------------------
 
 _BASE = "org.gnome.settings-daemon.plugins.media-keys"
-_PATH = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/dictation/"
+_KEYBINDINGS = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings"
+_PATH = f"{_KEYBINDINGS}/dictux/"
+# Pre-rename path (app used to be called "dictation"); its stale binding would
+# still fire the now-nonexistent `dictation --toggle` command, so we clean it up.
+_LEGACY_PATHS = [f"{_KEYBINDINGS}/dictation/"]
 
 
 def _gsettings(*args: str) -> str:
@@ -31,19 +35,20 @@ def _gset(*args: str) -> None:
     subprocess.run(["gsettings", *args], check=True)
 
 
-def install_gnome_hotkey(accelerator: str, command: str = "dictation --toggle",
-                         name: str = "Dictation toggle") -> None:
+def install_gnome_hotkey(accelerator: str, command: str = "dictux --toggle",
+                         name: str = "Dictux toggle") -> None:
     """Create/update a GNOME custom shortcut bound to ``accelerator``.
 
     ``accelerator`` uses GTK syntax, e.g. ``<Super>backslash`` or ``<Ctrl><Alt>d``.
     """
     key = f"{_BASE}.custom-keybinding:{_PATH}"
-    # Register the path in the media-keys list (idempotent).
+    # Register the path in the media-keys list, dropping any stale legacy entry
+    # so a pre-rename `dictation --toggle` binding can't linger. Idempotent.
     raw = _gsettings("get", _BASE, "custom-keybindings")
-    paths = _parse_str_list(raw)
+    paths = [p for p in _parse_str_list(raw) if p not in _LEGACY_PATHS]
     if _PATH not in paths:
         paths.append(_PATH)
-        _gset("set", _BASE, "custom-keybindings", _format_str_list(paths))
+    _gset("set", _BASE, "custom-keybindings", _format_str_list(paths))
     _gset("set", key, "name", name)
     _gset("set", key, "command", command)
     _gset("set", key, "binding", accelerator)
@@ -51,7 +56,8 @@ def install_gnome_hotkey(accelerator: str, command: str = "dictation --toggle",
 
 def remove_gnome_hotkey() -> None:
     raw = _gsettings("get", _BASE, "custom-keybindings")
-    paths = [p for p in _parse_str_list(raw) if p != _PATH]
+    stale = {_PATH, *_LEGACY_PATHS}
+    paths = [p for p in _parse_str_list(raw) if p not in stale]
     _gset("set", _BASE, "custom-keybindings", _format_str_list(paths))
 
 

@@ -1,11 +1,11 @@
 """Command-line entry point.
 
 Usage:
-  dictation                 Launch the tray app (or no-op if already running).
-  dictation --toggle        Toggle recording in the running app (bind to a key).
-  dictation --start/--stop/--cancel
-  dictation --install-hotkey [ACCEL]   Register the GNOME keyboard shortcut.
-  dictation --status        Print whether the app is running.
+  dictux                    Launch the tray app (or no-op if already running).
+  dictux --toggle           Toggle recording in the running app (bind to a key).
+  dictux --start/--stop/--cancel
+  dictux --install-hotkey [ACCEL]   Register the GNOME keyboard shortcut.
+  dictux --status           Print whether the app is running.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from .config import Config, ensure_dirs
 
 def _send_or_fail(command: str) -> int:
     if not ipc.is_running():
-        print("Dictation is not running. Start it first with `dictation`.", file=sys.stderr)
+        print("Dictux is not running. Start it first with `dictux`.", file=sys.stderr)
         return 1
     reply = ipc.send(command)
     if reply and reply != "ok":
@@ -28,8 +28,8 @@ def _send_or_fail(command: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="dictation", description="Local voice dictation for Linux.")
-    parser.add_argument("--version", action="version", version=f"dictation {__version__}")
+    parser = argparse.ArgumentParser(prog="dictux", description="Local voice dictation for Linux.")
+    parser.add_argument("--version", action="version", version=f"dictux {__version__}")
     g = parser.add_mutually_exclusive_group()
     g.add_argument("--toggle", action="store_true", help="toggle recording")
     g.add_argument("--start", action="store_true", help="start recording")
@@ -64,12 +64,12 @@ def main(argv: list[str] | None = None) -> int:
         if accel != cfg.gnome_hotkey:
             cfg.gnome_hotkey = accel
             cfg.save()
-        print(f"Registered GNOME shortcut '{accel}' → dictation --toggle")
+        print(f"Registered GNOME shortcut '{accel}' → dictux --toggle")
         return 0
 
     # No command: launch the app.
     if ipc.is_running():
-        print("Dictation is already running (check your system tray).")
+        print("Dictux is already running (check your system tray).")
         return 0
     return _run_app()
 

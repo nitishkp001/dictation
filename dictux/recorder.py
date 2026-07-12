@@ -54,7 +54,7 @@ class Recorder:
     def start(self) -> None:
         if self.is_recording:
             return
-        fd, name = tempfile.mkstemp(prefix="dictation-", suffix=".wav")
+        fd, name = tempfile.mkstemp(prefix="dictux-", suffix=".wav")
         Path(name).unlink(missing_ok=True)  # let the recorder create it
         import os
         os.close(fd)

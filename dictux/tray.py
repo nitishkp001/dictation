@@ -20,7 +20,7 @@ from .settings_window import SettingsWindow
 
 
 def _icon(color_state: State | None = None) -> QIcon:
-    svg_path = files("dictation.resources") / "icon.svg"
+    svg_path = files("dictux.resources") / "icon.svg"
     pix = QPixmap(str(svg_path))
     return QIcon(pix)
 

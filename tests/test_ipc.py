@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from dictation import ipc
+from dictux import ipc
 
 
 def test_server_client_roundtrip(tmp_path):

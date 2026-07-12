@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dictation import models
+from dictux import models
 
 
 def test_registry_not_empty_and_unique_ids():
