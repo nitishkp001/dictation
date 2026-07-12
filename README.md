@@ -36,6 +36,20 @@ A Linux **SuperWhisper alternative** — inspired by
 
 ## Install
 
+### AppImage — no Python needed (easiest)
+
+Grab `Dictux-x86_64.AppImage` from the [latest release](https://github.com/nitishkp001/dictux/releases/latest),
+then:
+
+```bash
+chmod +x Dictux-x86_64.AppImage
+./Dictux-x86_64.AppImage
+```
+
+It bundles Python and all dependencies. You still need `pw-record` (PipeWire) for
+recording, and optionally `wl-clipboard`/`ydotool` for clipboard/auto-paste — see
+[Requirements](#requirements).
+
 ### One-liner (recommended)
 
 ```bash
