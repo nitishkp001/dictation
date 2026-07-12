@@ -1,4 +1,4 @@
-# Dictation — Linux port of OpenSuperWhisper
+# Dictux — Linux port of OpenSuperWhisper
 
 ## Goal
 A packaged, installable Linux app: hotkey → record → local Whisper transcription
@@ -21,11 +21,11 @@ A packaged, installable Linux app: hotkey → record → local Whisper transcrip
 - `core.Engine` — Qt-free state machine (IDLE→RECORDING→TRANSCRIBING), runs
   transcription on a worker thread, fires callbacks.
 - `tray.TrayApp` — Qt UI; marshals Engine callbacks to the GUI thread via signals;
-  hosts the IPC server so `dictation --toggle` controls the running instance.
+  hosts the IPC server so `dictux --toggle` controls the running instance.
 - `cli.main` — dispatches subcommands or launches the app.
 
 ## Packaging
-- `pyproject.toml` → `pipx install`, console script `dictation`.
+- `pyproject.toml` → `pipx install`, console script `dictux`.
 - `packaging/install.sh` → deps + `.desktop` + icon + GNOME shortcut.
 - MIT licensed; README with install/usage; push to GitHub.
 

@@ -3,13 +3,13 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dictation"
+name = "dictux"
 version = "0.1.0"
 description = "Local voice-to-text dictation for Linux — record with a hotkey, transcribe with Whisper, paste anywhere. A Linux port of OpenSuperWhisper."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Dictation contributors" }]
+authors = [{ name = "Dictux contributors" }]
 keywords = ["whisper", "dictation", "speech-to-text", "transcription", "linux", "wayland"]
 classifiers = [
     "Environment :: X11 Applications :: Qt",
@@ -31,17 +31,17 @@ hotkey = ["evdev>=1.7"]
 dev = ["ruff", "pytest"]
 
 [project.urls]
-Homepage = "https://github.com/nitishkp001/dictation"
-Repository = "https://github.com/nitishkp001/dictation"
+Homepage = "https://github.com/nitishkp001/dictux"
+Repository = "https://github.com/nitishkp001/dictux"
 
 [project.scripts]
-dictation = "dictation.cli:main"
+dictux = "dictux.cli:main"
 
 [tool.setuptools]
-packages = ["dictation"]
+packages = ["dictux"]
 
 [tool.setuptools.package-data]
-dictation = ["resources/*.svg", "resources/*.png"]
+dictux = ["resources/*.svg", "resources/*.png"]
 
 [tool.ruff]
 line-length = 100

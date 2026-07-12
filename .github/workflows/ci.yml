@@ -33,7 +33,7 @@ jobs:
           pip install -e '.[dev]'
 
       - name: Ruff lint
-        run: ruff check dictation tests
+        run: ruff check dictux tests
 
       - name: Run tests
         run: pytest -q
@@ -67,7 +67,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           python - <<'PY'
-          import dictation.tray, dictation.settings_window, dictation.cli
+          import dictux.tray, dictux.settings_window, dictux.cli
           print("GUI modules import OK")
           PY
 

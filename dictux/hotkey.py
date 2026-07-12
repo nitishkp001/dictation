@@ -3,7 +3,7 @@
 Two mechanisms:
 
 1. GNOME custom keybinding (default). We register a shortcut via ``gsettings``
-   that runs ``dictation --toggle``. Portable, no special permissions, works on
+   that runs ``dictux --toggle``. Portable, no special permissions, works on
    Wayland. See :func:`install_gnome_hotkey`.
 
 2. Optional evdev listener (for non-GNOME desktops). Reads key events directly
@@ -20,7 +20,7 @@ from typing import Callable
 # --- GNOME gsettings custom keybinding ---------------------------------------
 
 _BASE = "org.gnome.settings-daemon.plugins.media-keys"
-_PATH = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/dictation/"
+_PATH = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/dictux/"
 
 
 def _gsettings(*args: str) -> str:
@@ -31,8 +31,8 @@ def _gset(*args: str) -> None:
     subprocess.run(["gsettings", *args], check=True)
 
 
-def install_gnome_hotkey(accelerator: str, command: str = "dictation --toggle",
-                         name: str = "Dictation toggle") -> None:
+def install_gnome_hotkey(accelerator: str, command: str = "dictux --toggle",
+                         name: str = "Dictux toggle") -> None:
     """Create/update a GNOME custom shortcut bound to ``accelerator``.
 
     ``accelerator`` uses GTK syntax, e.g. ``<Super>backslash`` or ``<Ctrl><Alt>d``.

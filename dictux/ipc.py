@@ -1,6 +1,6 @@
 """Tiny Unix-socket control channel.
 
-The running app listens on a socket; ``dictation --toggle`` (bound to a keyboard
+The running app listens on a socket; ``dictux --toggle`` (bound to a keyboard
 shortcut) connects and sends a one-line command. This is how we get a reliable
 "global hotkey" on Wayland without needing privileged input access.
 """
@@ -54,7 +54,7 @@ class Server:
         if self._path.exists():
             try:
                 if is_running(self._path):
-                    raise RuntimeError("Another dictation instance is already running.")
+                    raise RuntimeError("Another dictux instance is already running.")
             finally:
                 self._path.unlink(missing_ok=True)
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

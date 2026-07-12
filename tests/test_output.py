@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dictation import output
-from dictation.config import Config
+from dictux import output
+from dictux.config import Config
 
 
 def test_is_wayland_detection(monkeypatch):

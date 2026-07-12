@@ -1,22 +1,26 @@
-# Dictation
+# Dictux — Voice Dictation for Linux
 
-[![CI](https://github.com/nitishkp001/dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/nitishkp001/dictation/actions/workflows/ci.yml)
+[![CI](https://github.com/nitishkp001/dictux/actions/workflows/ci.yml/badge.svg)](https://github.com/nitishkp001/dictux/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Local, private voice-to-text for Linux.** Press a hotkey, speak, and your words
-are transcribed with [Whisper](https://github.com/openai/whisper) and dropped into
-whatever app is focused — all offline, nothing sent to the cloud.
+**Dictux** is a local, private **voice-to-text dictation app for Linux**. Press a
+hotkey, speak, and your words are transcribed with [Whisper](https://github.com/openai/whisper)
+and dropped into whatever app is focused — fully **offline**, nothing sent to the cloud.
+Works on **Wayland and X11**.
 
-A Linux port of [OpenSuperWhisper](https://github.com/starmel/OpenSuperWhisper)
-(macOS), built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper),
-PipeWire and Qt.
+A Linux **SuperWhisper alternative** — inspired by
+[OpenSuperWhisper](https://github.com/starmel/OpenSuperWhisper) (macOS), built on
+[faster-whisper](https://github.com/SYSTRAN/faster-whisper), PipeWire and Qt.
+
+> Keywords: linux dictation, voice to text, speech to text, whisper, offline dictation,
+> wayland dictation, voice typing, superwhisper for linux.
 
 ---
 
 ## Features
 
-- 🎙️ **Hotkey dictation** — press to start, press to stop; transcription appears where your cursor is
-- 🧠 **Multiple models** — Tiny → Large-v3 / Large-v3-Turbo / Distil, downloaded on demand and cached
+- 🎙️ **Hotkey dictation** — press to start, press to stop; text appears where your cursor is
+- 🧠 **Multiple Whisper models** — Tiny → Large-v3 / Large-v3-Turbo / Distil, downloaded on demand and cached
 - 🌍 **Multilingual** with auto-detection (or pin a language)
 - 📋 **Flexible output** — copy to clipboard, auto-paste, or type directly
 - 🔔 Desktop notifications and a system-tray menu
@@ -35,8 +39,8 @@ PipeWire and Qt.
 ### One-liner (recommended)
 
 ```bash
-git clone https://github.com/nitishkp001/dictation.git
-cd dictation
+git clone https://github.com/nitishkp001/dictux.git
+cd dictux
 ./packaging/install.sh
 ```
 
@@ -46,7 +50,7 @@ and icon, and (on GNOME) binds **Super + \\** to toggle recording.
 ### Manual
 
 ```bash
-pipx install git+https://github.com/nitishkp001/dictation.git
+pipx install git+https://github.com/nitishkp001/dictux.git
 # or, from a checkout:
 pip install --user .
 ```
@@ -54,16 +58,16 @@ pip install --user .
 Then launch it:
 
 ```bash
-dictation            # starts the tray app
-dictation --install-hotkey '<Super>backslash'   # GNOME: bind a shortcut
+dictux                                  # starts the tray app
+dictux --install-hotkey '<Super>backslash'   # GNOME: bind a shortcut
 ```
 
-On non-GNOME desktops, bind `dictation --toggle` to a key in your desktop's
+On non-GNOME desktops, bind `dictux --toggle` to a key in your desktop's
 keyboard-shortcut settings.
 
 ## Usage
 
-1. Launch `dictation` — a microphone icon appears in your system tray.
+1. Launch `dictux` — a microphone icon appears in your system tray.
 2. Press your hotkey (default **Super + \\**) → recording starts.
 3. Speak, then press the hotkey again → it transcribes and copies/pastes the text.
 4. Left-click the tray icon to toggle; right-click for the menu (model, settings, quit).
@@ -72,12 +76,12 @@ Command reference:
 
 | Command | Action |
 |---|---|
-| `dictation` | Launch the tray app |
-| `dictation --toggle` | Start/stop recording (bind this to a key) |
-| `dictation --start` / `--stop` / `--cancel` | Explicit control |
-| `dictation --settings` | Open settings |
-| `dictation --status` | Is it running? |
-| `dictation --install-hotkey [ACCEL]` | Register the GNOME shortcut |
+| `dictux` | Launch the tray app |
+| `dictux --toggle` | Start/stop recording (bind this to a key) |
+| `dictux --start` / `--stop` / `--cancel` | Explicit control |
+| `dictux --settings` | Open settings |
+| `dictux --status` | Is it running? |
+| `dictux --install-hotkey [ACCEL]` | Register the GNOME shortcut |
 
 ## Models
 
@@ -112,13 +116,13 @@ is still copied to your clipboard — just paste with Ctrl+V.
 ## How it works
 
 ```
-hotkey ──► dictation --toggle ──(unix socket)──► running app
-                                                     │
-                                    pw-record ──► WAV ─┘
-                                                     │
-                                       faster-whisper (offline)
-                                                     │
-                                    clipboard / ydotool / notify
+hotkey ──► dictux --toggle ──(unix socket)──► running app
+                                                  │
+                                 pw-record ──► WAV ─┘
+                                                  │
+                                    faster-whisper (offline)
+                                                  │
+                                 clipboard / ydotool / notify
 ```
 
 ## Development
@@ -126,7 +130,8 @@ hotkey ──► dictation --toggle ──(unix socket)──► running app
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e '.[dev,hotkey]'
-python -m dictation           # run from source
+python -m dictux           # run from source
+pytest -q                  # run the test suite
 ```
 
 ## License

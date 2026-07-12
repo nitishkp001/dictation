@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dictation import hotkey
+from dictux import hotkey
 
 
 def test_parse_empty_variants():
