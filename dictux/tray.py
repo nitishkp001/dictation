@@ -126,18 +126,22 @@ class TrayApp:
 
     def _rebuild_model_menu(self) -> None:
         self.model_menu.clear()
-        for m in models.MODELS:
-            downloaded = "● " if models.is_downloaded(m.id) else "○ "
-            act = QAction(f"{downloaded}{m.label}  ({m.size_mb} MB)", self.model_menu)
-            act.setCheckable(True)
-            act.setChecked(m.id == self.cfg.model)
-            act.setData(m.id)
-            act.triggered.connect(lambda _=False, mid=m.id: self._select_model(mid))
-            self._model_group.addAction(act)
-            self.model_menu.addAction(act)
+        for group, items in models.models_by_group().items():
+            self.model_menu.addSection(group)
+            for m in items:
+                downloaded = "● " if models.is_downloaded(m.id) else "○ "
+                act = QAction(f"{downloaded}{m.label}  ({m.size_str})", self.model_menu)
+                act.setCheckable(True)
+                act.setChecked(m.id == self.cfg.model)
+                act.setData(m.id)
+                act.triggered.connect(lambda _=False, mid=m.id: self._select_model(mid))
+                self._model_group.addAction(act)
+                self.model_menu.addAction(act)
 
     def _select_model(self, model_id: str) -> None:
         self.cfg.model = model_id
+        for key, value in models.selection_overrides(model_id).items():
+            setattr(self.cfg, key, value)
         self.cfg.save()
         self.engine.apply_config(self.cfg)
         self.engine.preload_model()
