@@ -1,5 +1,8 @@
 # Dictation
 
+[![CI](https://github.com/nitishkp001/dictation/actions/workflows/ci.yml/badge.svg)](https://github.com/nitishkp001/dictation/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Local, private voice-to-text for Linux.** Press a hotkey, speak, and your words
 are transcribed with [Whisper](https://github.com/openai/whisper) and dropped into
 whatever app is focused — all offline, nothing sent to the cloud.

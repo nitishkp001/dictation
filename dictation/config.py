@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 from platformdirs import user_config_dir, user_runtime_dir, user_state_dir

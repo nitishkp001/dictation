@@ -31,6 +31,13 @@ A packaged, installable Linux app: hotkey → record → local Whisper transcrip
 
 ## Status / TODO
 - [x] Core modules, Qt tray, settings, CLI, packaging, docs
-- [ ] Verify end-to-end on this machine (record → transcribe)
-- [ ] Optional: AppImage/Flatpak, PyPI release, GitHub Actions CI
+- [x] Verify end-to-end on this machine (record → transcribe)
+- [x] Test suite (`tests/`) + GitHub Actions CI (lint, test, GUI import, build)
+- [x] Release workflow (tag `v*` → build + GitHub Release; optional PyPI publish)
+- [ ] Optional: AppImage/Flatpak packaging
 - [ ] Optional: hold-to-record, mouse-button trigger, drag-drop file transcription
+
+## Releasing
+Tag and push: `git tag v0.1.0 && git push origin v0.1.0`. The release workflow
+builds sdist+wheel and attaches them to a GitHub Release. To also publish to PyPI,
+set repo variable `PUBLISH_PYPI=true` and configure a PyPI Trusted Publisher.
