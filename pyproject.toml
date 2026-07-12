@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dictation"
+version = "0.1.0"
+description = "Local voice-to-text dictation for Linux — record with a hotkey, transcribe with Whisper, paste anywhere. A Linux port of OpenSuperWhisper."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Dictation contributors" }]
+keywords = ["whisper", "dictation", "speech-to-text", "transcription", "linux", "wayland"]
+classifiers = [
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = [
+    "faster-whisper>=1.0.3",
+    "PySide6>=6.6",
+    "platformdirs>=4.0",
+]
+
+[project.optional-dependencies]
+# Optional evdev-based global hotkey listener (works outside GNOME too).
+hotkey = ["evdev>=1.7"]
+dev = ["ruff", "pytest"]
+
+[project.urls]
+Homepage = "https://github.com/nitishkp001/dictation"
+Repository = "https://github.com/nitishkp001/dictation"
+
+[project.scripts]
+dictation = "dictation.cli:main"
+
+[tool.setuptools]
+packages = ["dictation"]
+
+[tool.setuptools.package-data]
+dictation = ["resources/*.svg", "resources/*.png"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
