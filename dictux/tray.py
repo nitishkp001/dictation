@@ -16,6 +16,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from . import APP_NAME, ipc, models
 from .config import Config
 from .core import Engine, State
+from .indicator import IndicatorWindow
 from .settings_window import SettingsWindow
 
 
@@ -45,6 +46,9 @@ class TrayApp:
         self._wire_bridge()
 
         self.settings_window: SettingsWindow | None = None
+
+        # Floating recording indicator (clicking it stops the recording).
+        self.indicator = IndicatorWindow(on_click=self.engine.stop)
 
         self.tray = QSystemTrayIcon(_icon(), parent=self.app)
         self.tray.setToolTip(f"{APP_NAME} — idle")
@@ -168,6 +172,16 @@ class TrayApp:
             State.TRANSCRIBING: "transcribing…",
         }[state]
         self.tray.setToolTip(f"{APP_NAME} — {tip}")
+
+        if self.cfg.show_indicator:
+            if state == State.RECORDING:
+                self.indicator.show_recording()
+            elif state == State.TRANSCRIBING:
+                self.indicator.show_transcribing()
+            else:
+                self.indicator.hide_indicator()
+        else:
+            self.indicator.hide_indicator()
 
     def _on_result(self, text: str, status: str) -> None:
         self.tray.setToolTip(f"{APP_NAME} — {status}")

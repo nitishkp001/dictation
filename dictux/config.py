@@ -45,6 +45,7 @@ class Config:
     # Feedback
     notifications: bool = True
     sound_on_start: bool = False
+    show_indicator: bool = True         # floating recording indicator overlay
 
     # Hotkey
     gnome_hotkey: str = "<Super>backslash"   # bound via gsettings on install

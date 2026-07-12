@@ -265,6 +265,9 @@ class SettingsWindow(QWidget):
         self.notif_check = QCheckBox("Desktop notifications")
         self.notif_check.setChecked(self.cfg.notifications)
         fb_form.addRow(self.notif_check)
+        self.indicator_check = QCheckBox("Floating recording indicator")
+        self.indicator_check.setChecked(self.cfg.show_indicator)
+        fb_form.addRow(self.indicator_check)
         outer.addWidget(fb_box)
 
         outer.addStretch(1)
@@ -375,6 +378,7 @@ class SettingsWindow(QWidget):
             auto_type=self.type_check.isChecked(),
             add_trailing_space=self.space_check.isChecked(),
             notifications=self.notif_check.isChecked(),
+            show_indicator=self.indicator_check.isChecked(),
             gnome_hotkey=self.gnome_hotkey_edit.text().strip(),
             evdev_hotkey=self.evdev_edit.text().strip(),
             beam_size=self.beam_spin.value(),
