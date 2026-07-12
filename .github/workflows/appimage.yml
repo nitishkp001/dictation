@@ -48,8 +48,11 @@ jobs:
           APP=$(ls dist/*.AppImage | head -1)
           chmod +x "$APP"
           echo "Built: $APP"
-          "$APP" --appimage-extract-and-run --version
-          "$APP" --appimage-extract-and-run --status
+          # APPIMAGE_EXTRACT_AND_RUN=1 (job env) runs it without FUSE.
+          out=$("$APP" --version)
+          echo "version output: $out"
+          echo "$out" | grep -q '^dictux ' || { echo "entry point not wired to dictux"; exit 1; }
+          "$APP" --status
 
       - name: Rename artifact
         id: art
