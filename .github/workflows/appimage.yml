@@ -59,7 +59,7 @@ jobs:
         run: |
           APP=$(ls dist/*.AppImage | head -1)
           NEW="dist/Dictux-x86_64.AppImage"
-          mv "$APP" "$NEW"
+          [ "$APP" = "$NEW" ] || mv "$APP" "$NEW"
           echo "path=$NEW" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
