@@ -83,8 +83,12 @@ def get(model_id: str) -> ModelInfo | None:
     return MODELS_BY_ID.get(model_id)
 
 
+DEFAULT_LANGUAGE = "auto"
+DEFAULT_COMPUTE = "int8"
+
+
 def selection_overrides(model_id: str) -> dict:
-    """Config fields to apply when a model is chosen (compute preset, language)."""
+    """Config fields a model *forces* when chosen (compute preset, language)."""
     info = MODELS_BY_ID.get(model_id)
     if info is None:
         return {}
@@ -94,6 +98,29 @@ def selection_overrides(model_id: str) -> dict:
     if info.preferred_language:
         out["language"] = info.preferred_language
     return out
+
+
+def selection_changes(old_model_id: str | None, new_model_id: str) -> dict:
+    """Config changes when switching ``old`` → ``new``, resetting presets left behind.
+
+    A model that declares no preset must not inherit a previous model's forced
+    language/compute (e.g. switching away from the Hebrew fine-tune must clear the
+    forced ``he`` language rather than leave it stuck).
+    """
+    old = MODELS_BY_ID.get(old_model_id or "")
+    new = MODELS_BY_ID.get(new_model_id)
+    changes: dict[str, str] = {"model": new_model_id}
+
+    if new and new.preferred_language:
+        changes["language"] = new.preferred_language
+    elif old and old.preferred_language:  # leaving a language-forcing model
+        changes["language"] = DEFAULT_LANGUAGE
+
+    if new and new.compute:
+        changes["compute_type"] = new.compute
+    elif old and old.compute:  # leaving a compute-preset model
+        changes["compute_type"] = DEFAULT_COMPUTE
+    return changes
 
 
 def models_by_group() -> dict[str, list[ModelInfo]]:
@@ -110,7 +137,7 @@ _RAW_ALIASES = {
 }
 
 
-def _repo_id(model_id: str) -> str:
+def repo_id(model_id: str) -> str:
     """Resolve a catalog id (or raw whisper alias / local path) to an HF repo id."""
     info = MODELS_BY_ID.get(model_id)
     if info is not None:
@@ -128,7 +155,7 @@ def _repo_id(model_id: str) -> str:
 
 def is_downloaded(model_id: str) -> bool:
     """True if the model's weights are already in the HF cache."""
-    repo = _repo_id(model_id)
+    repo = repo_id(model_id)
     if Path(repo).exists():  # local path
         return True
     hit = try_to_load_from_cache(repo, "model.bin")

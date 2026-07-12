@@ -22,7 +22,6 @@ def test_download_short_circuits_when_cached(monkeypatch):
 
 def test_download_invokes_snapshot_for_correct_repo(monkeypatch):
     monkeypatch.setattr(models, "is_downloaded", lambda mid: False)
-    monkeypatch.setattr(download, "total_size_bytes", lambda repo: 0)
     seen = {}
     monkeypatch.setattr(
         huggingface_hub, "snapshot_download",
@@ -30,5 +29,5 @@ def test_download_invokes_snapshot_for_correct_repo(monkeypatch):
     )
     progress = []
     download.download_model("turbo-large", progress.append)
-    assert seen["repo"] == models._repo_id("turbo-large")
+    assert seen["repo"] == models.repo_id("turbo-large")
     assert progress[-1] == 1.0

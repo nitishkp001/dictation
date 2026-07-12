@@ -28,11 +28,11 @@ def test_lookup_helpers():
     ],
 )
 def test_repo_id_mapping(model_id, expected):
-    assert models._repo_id(model_id) == expected
+    assert models.repo_id(model_id) == expected
 
 
 def test_custom_repo_id_passthrough():
-    assert models._repo_id("some/custom-repo") == "some/custom-repo"
+    assert models.repo_id("some/custom-repo") == "some/custom-repo"
 
 
 def test_sizes_are_positive():
@@ -67,6 +67,26 @@ def test_selection_overrides():
     assert models.selection_overrides("turbo-hebrew")["language"] == "he"
     assert models.selection_overrides("base") == {}   # no presets
     assert models.selection_overrides("nope") == {}
+
+
+def test_selection_changes_resets_language_leaving_hebrew():
+    ch = models.selection_changes("turbo-hebrew", "turbo-large")
+    assert ch["language"] == "auto"          # he must not leak to the new model
+    assert ch["compute_type"] == "float16"   # new model's own preset applies
+
+
+def test_selection_changes_forces_hebrew():
+    assert models.selection_changes("base", "turbo-hebrew")["language"] == "he"
+
+
+def test_selection_changes_resets_compute_leaving_turbo():
+    ch = models.selection_changes("turbo-small", "base")
+    assert ch["compute_type"] == models.DEFAULT_COMPUTE   # reset, base has no preset
+    assert "language" not in ch
+
+
+def test_selection_changes_no_presets():
+    assert models.selection_changes("base", "small") == {"model": "small"}
 
 
 def test_size_str_and_hf_url():

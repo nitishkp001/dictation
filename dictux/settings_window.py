@@ -182,13 +182,14 @@ class SettingsWindow(QWidget):
             row["button"].setEnabled(True)
 
     def _on_model_selected(self, model_id: str) -> None:
+        # Compute the transition from the previously selected model so a preset the
+        # old model forced (e.g. Hebrew's language) is reset if the new one doesn't.
+        changes = models.selection_changes(self._selected_model_id, model_id)
         self._selected_model_id = model_id
-        # Apply the model's presets immediately for visible feedback.
-        overrides = models.selection_overrides(model_id)
-        if "compute_type" in overrides:
-            self.compute_combo.setCurrentText(overrides["compute_type"])
-        if "language" in overrides:
-            self._select_combo(self.lang_combo, overrides["language"])
+        if "compute_type" in changes:
+            self.compute_combo.setCurrentText(changes["compute_type"])
+        if "language" in changes:
+            self._select_combo(self.lang_combo, changes["language"])
 
     def _start_download(self, model_id: str) -> None:
         row = self._model_rows.get(model_id)
@@ -225,7 +226,7 @@ class SettingsWindow(QWidget):
             self._refresh_download_button(model_id)
             # Turbo tiers share a download — refresh their buttons too.
             for other in models.MODELS:
-                if other.repo == models._repo_id(model_id):
+                if other.repo == models.repo_id(model_id):
                     self._refresh_download_button(other.id)
             self.set_status(f"Downloaded {model_id}")
         else:

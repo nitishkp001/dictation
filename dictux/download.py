@@ -14,17 +14,6 @@ from . import models
 ProgressCb = Callable[[float], None]
 
 
-def total_size_bytes(repo: str) -> int:
-    """Best-effort total download size for a repo (0 if it can't be determined)."""
-    try:
-        from huggingface_hub import HfApi
-
-        info = HfApi().model_info(repo, files_metadata=True)
-        return sum(s.size or 0 for s in (info.siblings or []))
-    except Exception:
-        return 0
-
-
 def download_model(model_id: str, progress_cb: ProgressCb | None = None) -> None:
     """Download a catalog model into the HF cache, reporting fractional progress.
 
@@ -35,20 +24,27 @@ def download_model(model_id: str, progress_cb: ProgressCb | None = None) -> None
             progress_cb(1.0)
         return
 
-    repo = models._repo_id(model_id)
-    total = total_size_bytes(repo)
-    done = {"n": 0}
+    repo = models.repo_id(model_id)
+    state = {"frac": 0.0}
 
     from huggingface_hub import snapshot_download
     from tqdm.auto import tqdm as _tqdm
 
     class _ReportingTqdm(_tqdm):
-        # huggingface_hub creates one of these per file; sum their updates.
+        """Report progress from the byte-tracking bar using its own ``n``/``total``.
+
+        snapshot_download uses ``tqdm_class`` for its aggregate bars, and across hub
+        versions that may be a byte bar or a file-count bar. We key off ``unit`` so
+        we always report bytes (not "3 of 4 files"), and only ever move forward.
+        """
+
         def update(self, n=0):
             result = super().update(n)
-            if n and progress_cb and total:
-                done["n"] += n
-                progress_cb(min(done["n"] / total, 0.999))
+            if progress_cb and self.total and getattr(self, "unit", "") in ("B", "iB"):
+                frac = min(self.n / self.total, 0.999)
+                if frac > state["frac"]:
+                    state["frac"] = frac
+                    progress_cb(frac)
             return result
 
     # Only the weights + small config/tokenizer files are needed for inference.

@@ -3,10 +3,27 @@
 from __future__ import annotations
 
 import faster_whisper
+import pytest
 
 from dictux import models
 from dictux.config import Config
-from dictux.transcriber import Transcriber
+from dictux.transcriber import Transcriber, _sanitize_compute
+
+
+@pytest.mark.parametrize(
+    "device,compute,expected",
+    [
+        ("cpu", "float16", "float32"),       # GPU-only -> CPU-valid, keeps quality
+        ("cpu", "int8_float16", "int8"),     # GPU-only -> CPU-valid
+        ("cpu", "int8", "int8"),
+        ("cpu", "float32", "float32"),
+        ("cuda", "int16", "float16"),        # CPU-only -> GPU-valid
+        ("cuda", "float16", "float16"),
+        ("cuda", "int8", "int8"),
+    ],
+)
+def test_sanitize_compute(device, compute, expected):
+    assert _sanitize_compute(device, compute) == expected
 
 
 def test_ensure_loaded_resolves_repo_id(monkeypatch):
@@ -24,7 +41,7 @@ def test_ensure_loaded_resolves_repo_id(monkeypatch):
     cfg = Config(model="large-v3-turbo", device="cpu", compute_type="int8")
     Transcriber(cfg).ensure_loaded(cfg)
 
-    assert captured["id"] == models._repo_id("large-v3-turbo")
+    assert captured["id"] == models.repo_id("large-v3-turbo")
     assert captured["device"] == "cpu"
     assert captured["compute_type"] == "int8"
 
@@ -37,4 +54,4 @@ def test_standard_alias_still_resolves(monkeypatch):
     )
     cfg = Config(model="base", device="cpu", compute_type="int8")
     Transcriber(cfg).ensure_loaded(cfg)
-    assert captured["id"] == models._repo_id("base")
+    assert captured["id"] == models.repo_id("base")

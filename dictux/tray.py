@@ -139,8 +139,9 @@ class TrayApp:
                 self.model_menu.addAction(act)
 
     def _select_model(self, model_id: str) -> None:
-        self.cfg.model = model_id
-        for key, value in models.selection_overrides(model_id).items():
+        # Reset presets left behind by the previously selected model (e.g. Hebrew's
+        # forced language) rather than letting them leak onto the new selection.
+        for key, value in models.selection_changes(self.cfg.model, model_id).items():
             setattr(self.cfg, key, value)
         self.cfg.save()
         self.engine.apply_config(self.cfg)
