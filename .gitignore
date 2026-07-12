@@ -18,3 +18,8 @@ venv/
 *.swp
 .idea/
 .vscode/
+
+# AppImage build artifacts (generated)
+packaging/appimage/dictux.png
+packaging/appimage/requirements.txt
+*.AppImage
