@@ -106,12 +106,17 @@ def deliver(text: str, cfg: Config) -> str:
         else:
             statuses.append("type unavailable")
     elif cfg.auto_paste:
-        import time
-        time.sleep(0.12)  # let the clipboard settle before paste
-        if _paste_shortcut():
-            statuses.append("pasted")
+        if not copied:
+            # Never fire Ctrl+V when the copy failed — that would paste whatever
+            # stale content is already on the clipboard.
+            statuses.append("copy failed, not pasted")
         else:
-            statuses.append("paste unavailable")
+            import time
+            time.sleep(0.12)  # let the clipboard settle before paste
+            if _paste_shortcut():
+                statuses.append("pasted")
+            else:
+                statuses.append("paste unavailable")
 
     if not statuses:
         # Last resort so the text isn't lost.

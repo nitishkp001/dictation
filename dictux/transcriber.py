@@ -35,11 +35,18 @@ class Transcriber:
                 progress(f"Loading model “{cfg.model}”…")
             from faster_whisper import WhisperModel
 
+            from .models import _repo_id
+
             device = cfg.device
             compute_type = cfg.compute_type
             if device == "auto":
                 device, compute_type = _auto_device(compute_type)
-            self._model = WhisperModel(cfg.model, device=device, compute_type=compute_type)
+            # Resolve through the same repo mapping is_downloaded() uses, so custom
+            # aliases (large-v3-turbo, distil-large-v3) load the exact repo we report
+            # as cached instead of faster-whisper's own — possibly different — default.
+            self._model = WhisperModel(
+                _repo_id(cfg.model), device=device, compute_type=compute_type
+            )
             self._loaded_key = key
             return self._model
 
