@@ -23,7 +23,7 @@ A Linux **SuperWhisper alternative** — inspired by
 - 🧠 **Multiple Whisper models** — Tiny → Large-v3 / Large-v3-Turbo / Distil, downloaded on demand and cached
 - 🌍 **Multilingual** with auto-detection (or pin a language)
 - 📋 **Flexible output** — copy to clipboard, auto-paste, or type directly
-- 🔔 Desktop notifications and a system-tray menu
+- 🔴 Floating recording indicator (pulsing dot, waveform, timer) + desktop notifications and a system-tray menu
 - ⚙️ Tunable decoding — beam size, temperature, VAD, initial prompt
 - 🐧 **Wayland-first** (also works on X11); no cloud, no account, fully offline
 
