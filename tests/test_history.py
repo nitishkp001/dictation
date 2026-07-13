@@ -42,13 +42,37 @@ def test_delete_removes_audio(tmp_path):
     audio = tmp_path / "a.wav"
     audio.write_bytes(b"RIFFfake")
     rec = Recording(text="x")
-    rec.audio_path = s.persist_audio(audio, rec.id)
+    rec.audio_path = s.persist_media(audio, rec.id)
     s.add(rec)
     stored = tmp_path / "recordings" / f"{rec.id}.wav"
     assert stored.exists()
     s.delete(rec.id)
     assert not stored.exists()
     assert s.all() == []
+
+
+def test_persist_media_preserves_suffix(tmp_path):
+    s = _store(tmp_path)
+    src = tmp_path / "clip.mp3"
+    src.write_bytes(b"fake")
+    dst = s.persist_media(src, "abc123")
+    assert dst.endswith("abc123.mp3")
+
+
+def test_load_survives_malformed_json(tmp_path):
+    path = tmp_path / "history.json"
+    path.write_text('{"not": "a list"}')     # valid JSON, wrong shape
+    s = RecordingStore(path=path, audio_dir=tmp_path / "rec")
+    assert s.all() == []
+
+
+def test_update_text_syncs_model(tmp_path):
+    s = _store(tmp_path)
+    rec = Recording(text="old", model="base")
+    s.add(rec)
+    s.update_text(rec.id, "new", model="turbo-large")
+    assert s.get(rec.id).text == "new"
+    assert s.get(rec.id).model == "turbo-large"
 
 
 def test_limit_evicts_oldest(tmp_path):

@@ -54,10 +54,14 @@ def main(argv: list[str] | None = None) -> int:
             return _send_or_fail(cmd)
 
     if args.file:
+        path = os.path.abspath(args.file)
+        if not os.path.isfile(path):
+            print(f"Not a file: {args.file}", file=sys.stderr)
+            return 1
         if not ipc.is_running():
             print("Dictux is not running. Start it first with `dictux`.", file=sys.stderr)
             return 1
-        ipc.send(f"file:{os.path.abspath(args.file)}")
+        ipc.send(f"file:{path}")
         return 0
 
     if args.status:

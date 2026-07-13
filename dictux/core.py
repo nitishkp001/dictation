@@ -140,10 +140,11 @@ class Engine:
         if self.store is None:
             return
         rec = Recording(text=text, duration=duration, model=self.cfg.model)
-        if audio is not None:
-            rec.audio_path = self.store.persist_audio(audio, rec.id)
-        elif source is not None:
-            rec.audio_path = str(source)
+        media = audio if audio is not None else source
+        if media is not None:
+            # Copy into store-owned storage so history survives the original file
+            # moving/being deleted (and so deleting an entry never removes a user file).
+            rec.audio_path = self.store.persist_media(media, rec.id)
         self.store.add(rec)
         self.on_recording(rec)
 
@@ -197,7 +198,9 @@ class Engine:
             self.on_error(f"Re-transcription failed: {e}")
             return
         if text and self.store is not None:
-            self.store.update_text(rec_id, text)
+            # Update text and model together — the entry now reflects the model that
+            # produced this text, not the previous transcription's.
+            self.store.update_text(rec_id, text, model=self.cfg.model)
             self.on_retranscribed(rec_id, text)
             self.on_status("Re-transcribed")
 

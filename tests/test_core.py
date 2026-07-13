@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from dictux.config import Config
 from dictux.core import Engine
 from dictux.history import Recording, RecordingStore
@@ -48,16 +50,21 @@ def test_file_worker_adds_history(tmp_path):
     eng._file_worker(media)
 
     assert results and results[0][0] == "from a file"
-    recs = store.all()
-    assert recs[0].text == "from a file"
-    assert recs[0].audio_path == str(media)   # references the source file
+    rec = store.all()[0]
+    assert rec.text == "from a file"
+    # Media is copied into the store (not the caller's path) and survives its removal.
+    assert rec.audio_path != str(media)
+    assert Path(rec.audio_path).exists()
+    media.unlink()
+    assert Path(rec.audio_path).exists()
 
 
-def test_retranscribe_updates_text(tmp_path):
+def test_retranscribe_updates_text_and_model(tmp_path):
     eng, store = _engine(tmp_path, text="updated transcription")
+    eng.cfg.model = "turbo-large"
     audio = tmp_path / "a.wav"
     audio.write_bytes(b"RIFFfake")
-    rec = Recording(text="old", audio_path=str(audio))
+    rec = Recording(text="old", model="base", audio_path=str(audio))
     store.add(rec)
     got = []
     eng.on_retranscribed = lambda rid, txt: got.append((rid, txt))
@@ -65,4 +72,5 @@ def test_retranscribe_updates_text(tmp_path):
     eng._retranscribe_worker(rec.id, audio)
 
     assert store.get(rec.id).text == "updated transcription"
+    assert store.get(rec.id).model == "turbo-large"   # metadata kept in sync
     assert got == [(rec.id, "updated transcription")]

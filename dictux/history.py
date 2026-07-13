@@ -51,10 +51,21 @@ class RecordingStore:
         if not self._path.exists():
             return []
         try:
+            # ValueError covers JSONDecodeError and UnicodeDecodeError (corrupt bytes).
             data = json.loads(self._path.read_text())
-        except (json.JSONDecodeError, OSError):
+        except (OSError, ValueError):
             return []
-        return [Recording.from_dict(d) for d in data]
+        if not isinstance(data, list):  # a dict/int/str is valid JSON but not our shape
+            return []
+        items: list[Recording] = []
+        for d in data:
+            if not isinstance(d, dict):
+                continue
+            try:
+                items.append(Recording.from_dict(d))
+            except (TypeError, ValueError):
+                continue
+        return items
 
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,11 +75,14 @@ class RecordingStore:
 
     # -- audio ----------------------------------------------------------------
 
-    def persist_audio(self, src: Path, rec_id: str) -> str | None:
-        """Copy a temp WAV into the store so it survives for re-transcription."""
+    def persist_media(self, src: Path, rec_id: str) -> str | None:
+        """Copy captured/imported audio into the store so it survives for
+        re-transcription (and so deleting a history entry never touches a file the
+        user still owns). The source suffix is preserved."""
         try:
             self._audio_dir.mkdir(parents=True, exist_ok=True)
-            dst = self._audio_dir / f"{rec_id}.wav"
+            suffix = src.suffix or ".wav"
+            dst = self._audio_dir / f"{rec_id}{suffix}"
             shutil.copyfile(src, dst)
             return str(dst)
         except OSError:
@@ -83,11 +97,13 @@ class RecordingStore:
             self._save()
         return rec
 
-    def update_text(self, rec_id: str, text: str) -> None:
+    def update_text(self, rec_id: str, text: str, model: str | None = None) -> None:
         with self._lock:
             for r in self._items:
                 if r.id == rec_id:
                     r.text = text
+                    if model is not None:  # keep model metadata in sync on re-transcribe
+                        r.model = model
                     break
             self._save()
 
@@ -122,7 +138,8 @@ class RecordingStore:
             return list(self._items)
 
     def get(self, rec_id: str) -> Recording | None:
-        return next((r for r in self._items if r.id == rec_id), None)
+        with self._lock:
+            return next((r for r in self._items if r.id == rec_id), None)
 
     def search(self, query: str) -> list[Recording]:
         q = query.strip().lower()
