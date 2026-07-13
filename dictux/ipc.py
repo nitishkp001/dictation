@@ -14,7 +14,7 @@ from typing import Callable
 
 from .config import SOCKET_PATH, ensure_dirs
 
-COMMANDS = ("toggle", "start", "stop", "cancel", "ping", "quit", "settings")
+COMMANDS = ("toggle", "start", "stop", "cancel", "ping", "quit", "settings", "show")
 
 
 def send(command: str, socket_path: Path = SOCKET_PATH, timeout: float = 2.0) -> str:

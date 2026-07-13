@@ -4,6 +4,8 @@ Usage:
   dictux                    Launch the tray app (or no-op if already running).
   dictux --toggle           Toggle recording in the running app (bind to a key).
   dictux --start/--stop/--cancel
+  dictux --show             Open the main window.
+  dictux --file PATH        Transcribe an audio/video file.
   dictux --install-hotkey [ACCEL]   Register the GNOME keyboard shortcut.
   dictux --status           Print whether the app is running.
 """
@@ -11,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from . import __version__, ipc
@@ -36,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--stop", action="store_true", help="stop and transcribe")
     g.add_argument("--cancel", action="store_true", help="cancel recording")
     g.add_argument("--settings", action="store_true", help="open the settings window")
+    g.add_argument("--show", action="store_true", help="open the main window")
+    g.add_argument("--file", metavar="PATH", help="transcribe an audio/video file")
     g.add_argument("--quit", action="store_true", help="quit the running app")
     g.add_argument("--status", action="store_true", help="report running state")
     g.add_argument("--install-hotkey", nargs="?", const="", metavar="ACCEL",
@@ -44,9 +49,16 @@ def main(argv: list[str] | None = None) -> int:
 
     ensure_dirs()
 
-    for cmd in ("toggle", "start", "stop", "cancel", "settings", "quit"):
+    for cmd in ("toggle", "start", "stop", "cancel", "settings", "show", "quit"):
         if getattr(args, cmd):
             return _send_or_fail(cmd)
+
+    if args.file:
+        if not ipc.is_running():
+            print("Dictux is not running. Start it first with `dictux`.", file=sys.stderr)
+            return 1
+        ipc.send(f"file:{os.path.abspath(args.file)}")
+        return 0
 
     if args.status:
         print("running" if ipc.is_running() else "not running")

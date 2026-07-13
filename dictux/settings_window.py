@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
     QProgressBar,
     QPushButton,
     QRadioButton,
@@ -63,7 +62,6 @@ class SettingsWindow(QWidget):
         tabs.addTab(self._audio_output_tab(), "Audio & Output")
         tabs.addTab(self._hotkey_tab(), "Hotkey")
         tabs.addTab(self._advanced_tab(), "Advanced")
-        tabs.addTab(self._history_tab(), "History")
 
         self.status_label = QLabel("")
         self.status_label.setStyleSheet("color: gray;")
@@ -343,13 +341,6 @@ class SettingsWindow(QWidget):
         form.addRow("Initial prompt", self.prompt_edit)
         return w
 
-    def _history_tab(self) -> QWidget:
-        w = QWidget()
-        layout = QVBoxLayout(w)
-        self.history_list = QListWidget()
-        layout.addWidget(self.history_list)
-        return w
-
     # -- helpers --------------------------------------------------------------
 
     def _select_combo(self, combo: QComboBox, value: str) -> None:
@@ -397,8 +388,3 @@ class SettingsWindow(QWidget):
 
     def set_status(self, msg: str) -> None:
         self.status_label.setText(msg)
-
-    def append_history(self, text: str) -> None:
-        self.history_list.insertItem(0, text.strip())
-        if self.history_list.count() > 100:
-            self.history_list.takeItem(self.history_list.count() - 1)

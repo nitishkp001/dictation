@@ -16,7 +16,9 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from . import APP_NAME, ipc, models
 from .config import Config
 from .core import Engine, State
+from .history import RecordingStore
 from .indicator import IndicatorWindow
+from .main_window import MainWindow
 from .settings_window import SettingsWindow
 
 
@@ -32,6 +34,8 @@ class _Bridge(QObject):
     error = Signal(str)
     status = Signal(str)
     invoke = Signal(str)  # IPC command marshalled to the GUI thread
+    recording = Signal(object)          # a new Recording was saved
+    retranscribed = Signal(str, str)    # (rec_id, new text)
 
 
 class TrayApp:
@@ -41,11 +45,20 @@ class TrayApp:
         self.app.setApplicationName(APP_NAME)
         self.app.setQuitOnLastWindowClosed(False)
 
-        self.engine = Engine(cfg)
+        self.store = RecordingStore()
+        self.engine = Engine(cfg, store=self.store)
         self.bridge = _Bridge()
         self._wire_bridge()
 
         self.settings_window: SettingsWindow | None = None
+        self.main_window = MainWindow(
+            cfg,
+            self.store,
+            on_toggle=self.engine.toggle,
+            on_open_settings=self.open_settings,
+            on_transcribe_file=self.engine.transcribe_file,
+            on_retranscribe=self.engine.retranscribe,
+        )
 
         # Floating recording indicator (clicking it stops the recording).
         self.indicator = IndicatorWindow(on_click=self.engine.stop)
@@ -69,25 +82,32 @@ class TrayApp:
         self.engine.on_result = lambda t, st: self.bridge.result.emit(t, st)
         self.engine.on_error = lambda m: self.bridge.error.emit(m)
         self.engine.on_status = lambda m: self.bridge.status.emit(m)
+        self.engine.on_recording = lambda rec: self.bridge.recording.emit(rec)
+        self.engine.on_retranscribed = lambda rid, txt: self.bridge.retranscribed.emit(rid, txt)
 
         self.bridge.state_changed.connect(self._on_state_changed)
         self.bridge.result.connect(self._on_result)
         self.bridge.error.connect(self._on_error)
         self.bridge.status.connect(self._on_status)
         self.bridge.invoke.connect(self._on_ipc_command)
+        self.bridge.recording.connect(self._on_recording)
+        self.bridge.retranscribed.connect(self._on_retranscribed)
 
     def _handle_ipc(self, command: str) -> str:
         command = command.strip()
         if command == "ping":
             return "pong"
-        if command not in ipc.COMMANDS:
+        if not command.startswith("file:") and command not in ipc.COMMANDS:
             return f"unknown command: {command}"
         # Marshal to GUI thread; reply immediately.
         self.bridge.invoke.emit(command)
         return "ok"
 
     def _on_ipc_command(self, command: str) -> None:
-        if command == "toggle":
+        if command.startswith("file:"):
+            self.engine.transcribe_file(command[len("file:"):])
+            self._show_main_window()
+        elif command == "toggle":
             self.engine.toggle()
         elif command == "start":
             self.engine.start()
@@ -97,6 +117,8 @@ class TrayApp:
             self.engine.cancel()
         elif command == "settings":
             self.open_settings()
+        elif command == "show":
+            self._show_main_window()
         elif command == "quit":
             self.quit()
 
@@ -108,6 +130,10 @@ class TrayApp:
         self.action_toggle = QAction("Start recording", menu)
         self.action_toggle.triggered.connect(self.engine.toggle)
         menu.addAction(self.action_toggle)
+
+        open_action = QAction("Open window", menu)
+        open_action.triggered.connect(self._show_main_window)
+        menu.addAction(open_action)
 
         menu.addSeparator()
 
@@ -172,6 +198,7 @@ class TrayApp:
             State.TRANSCRIBING: "transcribing…",
         }[state]
         self.tray.setToolTip(f"{APP_NAME} — {tip}")
+        self.main_window.set_state(state)
 
         if self.cfg.show_indicator:
             if state == State.RECORDING:
@@ -185,8 +212,18 @@ class TrayApp:
 
     def _on_result(self, text: str, status: str) -> None:
         self.tray.setToolTip(f"{APP_NAME} — {status}")
-        if self.settings_window is not None:
-            self.settings_window.append_history(text)
+
+    def _on_recording(self, rec) -> None:
+        self.main_window.add_recording(rec)
+
+    def _on_retranscribed(self, rec_id: str, text: str) -> None:
+        self.main_window.update_recording(rec_id, text)
+
+    def _show_main_window(self) -> None:
+        self.main_window.refresh()
+        self.main_window.show()
+        self.main_window.raise_()
+        self.main_window.activateWindow()
 
     def _on_error(self, msg: str) -> None:
         self.tray.showMessage(APP_NAME, msg, QSystemTrayIcon.MessageIcon.Critical, 5000)
