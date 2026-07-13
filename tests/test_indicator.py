@@ -2,21 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    try:
-        from PySide6.QtWidgets import QApplication
-    except Exception as e:  # noqa: BLE001
-        pytest.skip(f"PySide6 unavailable: {e}")
-    try:
-        app = QApplication.instance() or QApplication([])
-    except Exception as e:  # noqa: BLE001 - missing GL/EGL libs on some CI images
-        pytest.skip(f"Qt platform unavailable: {e}")
-    yield app
-
 
 def test_indicator_state_transitions(qapp):
     from dictux.indicator import IndicatorWindow

@@ -23,6 +23,8 @@ A Linux **SuperWhisper alternative** — inspired by
 - 🧠 **Multiple Whisper models** — Tiny → Large-v3 / Large-v3-Turbo / Distil, downloaded on demand and cached
 - 🌍 **Multilingual** with auto-detection (or pin a language)
 - 📋 **Flexible output** — copy to clipboard, auto-paste, or type directly
+- 🗂️ **Main window** — searchable recording history with per-item copy, re-transcribe, and delete
+- 📎 **Drag-drop / CLI file transcription** — drop an audio or video file (or `dictux --file`) to transcribe it
 - 🔴 Floating recording indicator (pulsing dot, waveform, timer) + desktop notifications and a system-tray menu
 - ⚙️ Tunable decoding — beam size, temperature, VAD, initial prompt
 - 🐧 **Wayland-first** (also works on X11); no cloud, no account, fully offline
@@ -94,6 +96,8 @@ Command reference:
 | `dictux --toggle` | Start/stop recording (bind this to a key) |
 | `dictux --start` / `--stop` / `--cancel` | Explicit control |
 | `dictux --settings` | Open settings |
+| `dictux --show` | Open the main window (history) |
+| `dictux --file PATH` | Transcribe an audio/video file |
 | `dictux --status` | Is it running? |
 | `dictux --install-hotkey [ACCEL]` | Register the GNOME shortcut |
 
