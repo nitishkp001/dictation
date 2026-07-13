@@ -27,6 +27,7 @@ A Linux **SuperWhisper alternative** — inspired by
 - 📎 **Drag-drop / CLI file transcription** — drop an audio or video file (or `dictux --file`) to transcribe it
 - 🔴 Floating recording indicator (pulsing dot, waveform, timer) + desktop notifications and a system-tray menu
 - ⚙️ Tunable decoding — beam size, temperature, VAD, initial prompt
+- 🚀 **First-run setup wizard** — pick a language, bind a shortcut, download a model, done
 - 🐧 **Wayland-first** (also works on X11); no cloud, no account, fully offline
 
 ## Requirements

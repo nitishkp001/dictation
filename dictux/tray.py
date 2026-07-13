@@ -19,6 +19,7 @@ from .core import Engine, State
 from .history import RecordingStore
 from .indicator import IndicatorWindow
 from .main_window import MainWindow
+from .onboarding import OnboardingWindow
 from .settings_window import SettingsWindow
 
 
@@ -72,6 +73,10 @@ class TrayApp:
         # IPC server: route commands onto the GUI thread.
         self.server = ipc.Server(self._handle_ipc)
         self.server.start()
+
+        self.onboarding: OnboardingWindow | None = None
+        if not self.cfg.onboarded:
+            self._show_onboarding()
 
         self.engine.preload_model()
 
@@ -224,6 +229,15 @@ class TrayApp:
         self.main_window.show()
         self.main_window.raise_()
         self.main_window.activateWindow()
+
+    def _show_onboarding(self) -> None:
+        self.onboarding = OnboardingWindow(self.cfg, on_done=self._on_onboarding_done)
+        self.onboarding.show()
+        self.onboarding.raise_()
+        self.onboarding.activateWindow()
+
+    def _on_onboarding_done(self, cfg: Config) -> None:
+        self._apply_settings(cfg)
 
     def _on_error(self, msg: str) -> None:
         self.tray.showMessage(APP_NAME, msg, QSystemTrayIcon.MessageIcon.Critical, 5000)
