@@ -52,6 +52,9 @@ class Config:
     evdev_hotkey: str = ""              # e.g. "KEY_LEFTCTRL+KEY_SPACE" (optional)
     hold_to_record: bool = False
 
+    # First-run
+    onboarded: bool = False             # set once the setup wizard is completed
+
     def save(self) -> None:
         _save(self)
 
