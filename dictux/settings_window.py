@@ -6,8 +6,8 @@ import threading
 from dataclasses import replace
 from typing import Callable
 
-from PySide6.QtCore import QObject, QUrl, Signal
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QObject, Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QKeyEvent
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -31,6 +31,197 @@ from PySide6.QtWidgets import (
 
 from . import download, hotkey, models
 from .config import Config
+
+# Qt modifier key -> (minimalist glyph, GTK accelerator token, evdev key name)
+_MODIFIER_KEYS = {
+    Qt.Key_Control: ("⌃", "<Ctrl>", "KEY_LEFTCTRL"),
+    Qt.Key_Shift: ("⇧", "<Shift>", "KEY_LEFTSHIFT"),
+    Qt.Key_Alt: ("⌥", "<Alt>", "KEY_LEFTALT"),
+    Qt.Key_Meta: ("⌘", "<Super>", "KEY_LEFTMETA"),
+}
+
+# Named keys that need a friendly glyph + explicit GTK/evdev spelling. Plain
+# letters/digits/F-keys are derived programmatically instead of listed here.
+_NAMED_KEYS = {
+    Qt.Key_Space: ("Space", "space", "KEY_SPACE"),
+    Qt.Key_Backslash: ("\\", "backslash", "KEY_BACKSLASH"),
+    Qt.Key_Slash: ("/", "slash", "KEY_SLASH"),
+    Qt.Key_Comma: (",", "comma", "KEY_COMMA"),
+    Qt.Key_Period: (".", "period", "KEY_DOT"),
+    Qt.Key_Minus: ("-", "minus", "KEY_MINUS"),
+    Qt.Key_Equal: ("=", "equal", "KEY_EQUAL"),
+    Qt.Key_Tab: ("⇥", "Tab", "KEY_TAB"),
+    Qt.Key_Escape: ("Esc", "Escape", "KEY_ESC"),
+    Qt.Key_Return: ("⏎", "Return", "KEY_ENTER"),
+    Qt.Key_Enter: ("⏎", "Return", "KEY_ENTER"),
+    Qt.Key_Backspace: ("⌫", "BackSpace", "KEY_BACKSPACE"),
+    Qt.Key_Delete: ("⌦", "Delete", "KEY_DELETE"),
+    Qt.Key_Up: ("↑", "Up", "KEY_UP"),
+    Qt.Key_Down: ("↓", "Down", "KEY_DOWN"),
+    Qt.Key_Left: ("←", "Left", "KEY_LEFT"),
+    Qt.Key_Right: ("→", "Right", "KEY_RIGHT"),
+}
+
+# Theme-aware styling — all colors derived from the active QPalette, so chips
+# render correctly in both light and dark themes with no hardcoded hex values.
+_CHIP_STYLE = (
+    "QLabel {{ background: palette(button); color: palette(button-text);"
+    " border: 1px solid palette(mid); border-radius: 5px;"
+    " padding: 3px 9px; font-size: 13px; font-weight: 600; {extra} }}"
+)
+_BOX_STYLE = (
+    "QFrame#hotkeyBox {{ border: 1px {style} palette(mid); border-radius: 6px;"
+    " background: palette(base); {extra} }}"
+)
+
+
+class HotkeyCaptureEdit(QFrame):
+    """Click, then press a key combo — shows the exact keys as minimalist
+    keycap chips instead of requiring the user to type GTK accelerator /
+    evdev syntax by hand."""
+
+    captured = Signal(str, str)  # (gtk_accelerator, evdev_combo)
+
+    _PLACEHOLDER = "Click here, then press your shortcut…"
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("hotkeyBox")
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setMinimumHeight(36)
+
+        self._row = QHBoxLayout(self)
+        self._row.setContentsMargins(10, 6, 10, 6)
+        self._row.setSpacing(6)
+        self._row.addStretch(1)
+        self._placeholder = QLabel(self._PLACEHOLDER)
+        self._placeholder.setStyleSheet("color: palette(mid); font-size: 12px;")
+        self._row.insertWidget(0, self._placeholder)
+        self._row.addStretch(1)
+        self._chips: list[QLabel] = []
+        self._unstyled()
+
+    def _unstyled(self) -> None:
+        self.setStyleSheet(_BOX_STYLE.format(style="dashed", extra=""))
+
+    def _focused_style(self) -> None:
+        self.setStyleSheet(_BOX_STYLE.format(style="solid", extra="border-color: palette(highlight); border-width: 2px;"))
+
+    def _set_chips(self, labels: list[str], pending: bool = False) -> None:
+        for chip in self._chips:
+            chip.deleteLater()
+        self._chips = []
+        self._placeholder.setVisible(not labels)
+        extra = "opacity: 0.6;" if pending else ""
+        for text in labels:
+            chip = QLabel(text)
+            chip.setStyleSheet(_CHIP_STYLE.format(extra=extra))
+            self._row.insertWidget(self._row.count() - 1, chip)
+            self._chips.append(chip)
+
+    def focusInEvent(self, event) -> None:  # noqa: D401
+        super().focusInEvent(event)
+        self._placeholder.setText("Press keys now…")
+        self._set_chips([])
+        self._focused_style()
+
+    def focusOutEvent(self, event) -> None:
+        super().focusOutEvent(event)
+        self._placeholder.setText(self._PLACEHOLDER)
+        self._unstyled()
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        key = event.key()
+        if key in _MODIFIER_KEYS:
+            # Show the held modifiers live so the user sees what's registering.
+            glyphs = [_MODIFIER_KEYS[k][0] for k in _MODIFIER_KEYS
+                      if event.modifiers() & _qt_modifier_for(k) or k == key]
+            self._set_chips(glyphs, pending=True)
+            return
+        if key in (Qt.Key_unknown,):
+            return
+
+        gtk_mods = "".join(_MODIFIER_KEYS[k][1] for k in _MODIFIER_KEYS
+                            if event.modifiers() & _qt_modifier_for(k))
+        evdev_mods = [_MODIFIER_KEYS[k][2] for k in _MODIFIER_KEYS
+                      if event.modifiers() & _qt_modifier_for(k)]
+        glyph_mods = [_MODIFIER_KEYS[k][0] for k in _MODIFIER_KEYS
+                      if event.modifiers() & _qt_modifier_for(k)]
+
+        is_function_key = Qt.Key_F1 <= key <= Qt.Key_F35
+        if not gtk_mods and not is_function_key:
+            # GNOME silently refuses to grab a bare key (Space, Backspace, a
+            # letter, ...) as a global shortcut — it would break normal typing.
+            # Rather than "register" something that will never fire, force a modifier.
+            self._placeholder.setText("Add a modifier (⌃⇧⌥⌘) — plain keys can't be global shortcuts")
+            self._set_chips([])
+            return
+
+        if key in _NAMED_KEYS:
+            glyph, gtk_key, evdev_key = _NAMED_KEYS[key]
+        elif Qt.Key_A <= key <= Qt.Key_Z:
+            letter = chr(key).upper()
+            glyph, gtk_key, evdev_key = letter, letter.lower(), f"KEY_{letter}"
+        elif Qt.Key_0 <= key <= Qt.Key_9:
+            digit = chr(key)
+            glyph, gtk_key, evdev_key = digit, digit, f"KEY_{digit}"
+        elif is_function_key:
+            n = key - Qt.Key_F1 + 1
+            glyph, gtk_key, evdev_key = f"F{n}", f"F{n}", f"KEY_F{n}"
+        else:
+            text = event.text().strip()
+            if not text:
+                return
+            glyph = gtk_key = text
+            evdev_key = f"KEY_{text.upper()}"
+
+        gtk_accel = f"{gtk_mods}{gtk_key}"
+        evdev_combo = "+".join([*evdev_mods, evdev_key])
+
+        self._set_chips([*glyph_mods, glyph])
+        self.captured.emit(gtk_accel, evdev_combo)
+
+    def keyReleaseEvent(self, event: QKeyEvent) -> None:
+        pass
+
+    def show_shortcut(self, gtk_accel: str) -> None:
+        """Display an already-configured GTK accelerator (e.g. ``<Super>backslash``)
+        as chips, so the tab opens showing the current shortcut."""
+        glyphs = _parse_gtk_accel(gtk_accel)
+        self._set_chips(glyphs)
+
+
+def _qt_modifier_for(key: int) -> Qt.KeyboardModifier:
+    return {
+        Qt.Key_Control: Qt.ControlModifier,
+        Qt.Key_Shift: Qt.ShiftModifier,
+        Qt.Key_Alt: Qt.AltModifier,
+        Qt.Key_Meta: Qt.MetaModifier,
+    }[key]
+
+
+# Reverse maps for rendering a stored GTK accelerator back into display glyphs.
+_GTK_MOD_TO_GLYPH = {tok: glyph for glyph, tok, _ in _MODIFIER_KEYS.values()}
+_GTK_KEY_TO_GLYPH = {gtk_key: glyph for glyph, gtk_key, _ in _NAMED_KEYS.values()}
+
+
+def _parse_gtk_accel(gtk_accel: str) -> list[str]:
+    """Turn ``<Super>backslash`` / ``<Ctrl><Alt>d`` into ``["⌘", "\\"]`` etc.
+    Returns an empty list for a blank/unset accelerator."""
+    accel = (gtk_accel or "").strip()
+    if not accel:
+        return []
+    glyphs: list[str] = []
+    # Pull the leading <Mod> tokens in order, then whatever remains is the key.
+    while accel.startswith("<") and ">" in accel:
+        end = accel.index(">") + 1
+        token = accel[:end]
+        accel = accel[end:]
+        glyphs.append(_GTK_MOD_TO_GLYPH.get(token, token.strip("<>")))
+    key = accel.strip()
+    if key:
+        glyphs.append(_GTK_KEY_TO_GLYPH.get(key, key.upper() if len(key) == 1 else key))
+    return glyphs
 
 
 class _DownloadSignals(QObject):
@@ -275,31 +466,45 @@ class SettingsWindow(QWidget):
         w = QWidget()
         form = QFormLayout(w)
 
-        self.gnome_hotkey_edit = QLineEdit(self.cfg.gnome_hotkey)
-        self.gnome_hotkey_edit.setPlaceholderText("<Super>backslash")
-        form.addRow("GNOME shortcut (GTK syntax)", self.gnome_hotkey_edit)
+        # The one and only shortcut. Internal state (not visible text fields) —
+        # the capture widget is the single source of truth for it.
+        self._gtk_accel = self.cfg.gnome_hotkey
+        self._evdev_combo = self.cfg.evdev_hotkey
 
-        apply_btn = QPushButton("Register GNOME shortcut")
-        apply_btn.clicked.connect(self._register_gnome_hotkey)
-        form.addRow(apply_btn)
+        self.hotkey_capture = HotkeyCaptureEdit()
+        self.hotkey_capture.show_shortcut(self._gtk_accel)
+        self.hotkey_capture.captured.connect(self._on_hotkey_captured)
+        form.addRow("Recording shortcut", self.hotkey_capture)
+
+        hint = QLabel("Click the box, then press the key combo you want to use — "
+                      "it applies immediately.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: gray; font-size: 11px;")
+        form.addRow(hint)
 
         if not hotkey.gnome_available():
             warn = QLabel("gsettings not found — on non-GNOME desktops bind "
-                          "`dictux --toggle` to a key in your DE's keyboard settings.")
+                          "`dictux --toggle` to a key in your desktop's keyboard settings.")
             warn.setWordWrap(True)
             warn.setStyleSheet("color: #b26a00;")
             form.addRow(warn)
 
-        self.evdev_edit = QLineEdit(self.cfg.evdev_hotkey)
-        self.evdev_edit.setPlaceholderText("optional, e.g. KEY_LEFTCTRL+KEY_SPACE")
-        form.addRow("evdev combo (optional)", self.evdev_edit)
-
-        note = QLabel("The shortcut runs `dictux --toggle`, which starts/stops "
-                      "recording in this running app.")
+        note = QLabel("This shortcut starts/stops recording. Press it once to "
+                      "begin, again to transcribe.")
         note.setWordWrap(True)
         note.setStyleSheet("color: gray; font-size: 11px;")
         form.addRow(note)
         return w
+
+    def _on_hotkey_captured(self, gtk_accel: str, evdev_combo: str) -> None:
+        self._gtk_accel = gtk_accel
+        self._evdev_combo = evdev_combo
+        # Apply immediately so there's nothing else for the user to click.
+        try:
+            hotkey.install_gnome_hotkey(gtk_accel)
+            self.set_status(f"Shortcut set to {gtk_accel}")
+        except Exception as e:  # noqa: BLE001
+            self.set_status(f"Failed to register shortcut: {e}")
 
     def _advanced_tab(self) -> QWidget:
         w = QWidget()
@@ -348,14 +553,6 @@ class SettingsWindow(QWidget):
         if idx >= 0:
             combo.setCurrentIndex(idx)
 
-    def _register_gnome_hotkey(self) -> None:
-        accel = self.gnome_hotkey_edit.text().strip()
-        try:
-            hotkey.install_gnome_hotkey(accel)
-            self.set_status(f"Registered {accel}")
-        except Exception as e:  # noqa: BLE001
-            self.set_status(f"Failed: {e}")
-
     def _collect(self) -> Config:
         return replace(
             self.cfg,
@@ -370,8 +567,8 @@ class SettingsWindow(QWidget):
             add_trailing_space=self.space_check.isChecked(),
             notifications=self.notif_check.isChecked(),
             show_indicator=self.indicator_check.isChecked(),
-            gnome_hotkey=self.gnome_hotkey_edit.text().strip(),
-            evdev_hotkey=self.evdev_edit.text().strip(),
+            gnome_hotkey=self._gtk_accel.strip(),
+            evdev_hotkey=self._evdev_combo.strip(),
             beam_size=self.beam_spin.value(),
             temperature=self.temp_spin.value(),
             no_speech_threshold=self.nospeech_spin.value(),
